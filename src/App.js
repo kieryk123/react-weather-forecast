@@ -15,27 +15,37 @@ class WeatherTable extends Component {
     super();
     this.state = {
       temps: [],
-      days: []
+      days: [],
+      descs: []
     };
   }
 
   componentWillMount() {
-    let url = 'http://api.openweathermap.org/data/2.5/forecast/daily?q=Warsaw&cnt=14&units=metric&APPID=a5f75eaf1905f8b2375a0ba961f96e5e';
+    this.update();
+  }
+
+  update(city = 'Warsaw') {
+    let url = `http://api.openweathermap.org/data/2.5/forecast/daily?q=${city}&cnt=14&units=metric&APPID=a5f75eaf1905f8b2375a0ba961f96e5e`;
 
     fetch(url)
       .then((data) => data.json())
       .then((data) => {
-        let tempArray = [];
-        let daysArray = [];
+        let tempArray = [],
+            daysArray = [],
+            descArray = [],
+            location = `${data.city.name}, ${data.city.country}`
 
         data.list.forEach((item) => {
           tempArray.push(item.temp.day);
           daysArray.push(item.dt);
+          descArray.push(item.weather[0].description);
         });
 
         this.setState({
           temps: tempArray,
-          days: daysArray
+          days: daysArray,
+          descs: descArray,
+          location: location
         });
       })
       .catch((error) => {
@@ -45,24 +55,33 @@ class WeatherTable extends Component {
 
   render() {
     return (
-      <table>
-        <tbody>
-          <Temp temp={this.state.temps} />
-          <Day day={this.state.days} />
-        </tbody>
-      </table>
+      <div>
+        <h1>Weather forecast for: {this.state.location}</h1>
+        <SearchForm onSearch={this.update.bind(this)} />
+        <table>
+          <thead></thead>
+          <tbody>
+            <Temp temp={this.state.temps} desc={this.state.descs} />
+            <Day day={this.state.days} />
+          </tbody>
+        </table>
+      </div>
     )
   }
 }
 
 class Temp extends Component {
   render() {
-    let temps = this.props.temp;
+    // store array of descriptions in Temp props
+    let desc = this.props.desc;
 
+    let temps = this.props.temp;
     temps = temps.map((value, index) => {
       value = value.toFixed(1);
       return (
-        <td temp={value} key={index}>{value} *C</td>
+        <td temp={value} key={index}>{value} *C <br />
+          <span value={desc[index]}>{desc[index]}</span>
+        </td>
       )
     });
 
@@ -84,6 +103,27 @@ class Day extends Component {
 
     return (
       <tr>{days}</tr>
+    )
+  }
+}
+
+class SearchForm extends Component {
+  handleSubmit(e) {
+    e.preventDefault();
+
+    let value = this.refs.cityName.value;
+    this.props.onSearch(value);
+
+    // clear input after submit
+    this.refs.cityName.value = '';
+  }
+
+  render() {
+    return (
+      <form onSubmit={this.handleSubmit.bind(this)}>
+        <input ref="cityName" type="text" required />
+        <input type="submit" value="search" />
+      </form>
     )
   }
 }
